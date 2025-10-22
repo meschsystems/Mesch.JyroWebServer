@@ -1,0 +1,32 @@
+# POST /dynamic/todo/toggle (form submission from UI)
+# Toggles a todo's completion status and redirects back to list
+
+Data.id = Data.request.body.id
+
+if Data.id == null or Data.id == "" then
+    Data._redirect = "/dynamic/todo/index?error=Invalid todo ID"
+    Data._statusCode = 302
+    return
+end
+
+# Convert string ID from form to number
+Data.idNumber = ToNumber(Data.id)
+
+# Get the current todo to check its status
+Data.todo = GetTodo(Data.idNumber)
+
+if Data.todo == null then
+    Data._redirect = "/dynamic/todo/index?error=Todo not found"
+    Data._statusCode = 302
+    return
+end
+
+# Toggle based on current state
+if Data.todo.isComplete == true then
+    UncompleteTodo(Data.idNumber)
+else
+    CompleteTodo(Data.idNumber)
+end
+
+Data._redirect = "/dynamic/todo/index"
+Data._statusCode = 302

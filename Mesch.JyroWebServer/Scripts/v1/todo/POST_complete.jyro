@@ -1,0 +1,24 @@
+# POST /api/v1/todo/complete
+# Marks a todo as complete
+# Body: { "id": 123 }
+
+Data.id = Data.request.body.id
+
+if Data.id == null then
+    Data._payload = {"error": "ID is required"}
+    Data._statusCode = 400
+    return
+end
+
+Data.updatedTodo = CompleteTodo(Data.id)
+
+if Data.updatedTodo == null then
+    Data._payload = {"error": "Todo not found"}
+    Data._statusCode = 404
+    return
+end
+
+Data._payload = {
+    "success": true,
+    "todo": Data.updatedTodo
+}

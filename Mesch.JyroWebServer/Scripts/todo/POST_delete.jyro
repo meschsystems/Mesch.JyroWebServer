@@ -1,0 +1,24 @@
+# POST /dynamic/todo/delete (form submission from UI)
+# Deletes a todo and redirects back to list
+
+Data.id = Data.request.body.id
+
+if Data.id == null or Data.id == "" then
+    Data._redirect = "/dynamic/todo/index?error=Invalid todo ID"
+    Data._statusCode = 302
+    return
+end
+
+# Convert string ID from form to number
+Data.idNumber = ToNumber(Data.id)
+
+Data.deleted = DeleteTodo(Data.idNumber)
+
+if Data.deleted == false then
+    Data._redirect = "/dynamic/todo/index?error=Todo not found"
+    Data._statusCode = 302
+    return
+end
+
+Data._redirect = "/dynamic/todo/index?success=Todo deleted"
+Data._statusCode = 302

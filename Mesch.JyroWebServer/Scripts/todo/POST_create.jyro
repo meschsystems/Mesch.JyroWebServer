@@ -1,0 +1,15 @@
+# POST /dynamic/todo/create (form submission from UI)
+# Creates a new todo and redirects back to list
+
+Data.title = Data.request.body.title
+
+if Data.title == null or Data.title == "" then
+    Data._redirect = "/dynamic/todo/index?error=Title is required"
+    Data._statusCode = 302
+    return
+end
+
+Data.newTodo = CreateTodo(Data.title)
+
+Data._redirect = "/dynamic/todo/index?success=Todo created"
+Data._statusCode = 302

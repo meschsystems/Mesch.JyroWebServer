@@ -1,0 +1,24 @@
+# POST /api/v1/todo/uncomplete
+# Marks a todo as incomplete
+# Body: { "id": 123 }
+
+Data.id = Data.request.body.id
+
+if Data.id == null then
+    Data._payload = {"error": "ID is required"}
+    Data._statusCode = 400
+    return
+end
+
+Data.updatedTodo = UncompleteTodo(Data.id)
+
+if Data.updatedTodo == null then
+    Data._payload = {"error": "Todo not found"}
+    Data._statusCode = 404
+    return
+end
+
+Data._payload = {
+    "success": true,
+    "todo": Data.updatedTodo
+}

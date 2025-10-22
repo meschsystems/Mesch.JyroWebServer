@@ -1,0 +1,20 @@
+# GET /api/v1/todo/item?id=123
+# Returns a single todo item by ID
+
+Data.id = Data.request.query.id
+
+if Data.id == "" then
+    Data._payload = {"error": "Missing id parameter"}
+    Data._statusCode = 400
+    return
+end
+
+Data.todo = GetTodo(ToNumber(Data.id))
+
+if Data.todo == null then
+    Data._payload = {"error": "Todo not found"}
+    Data._statusCode = 404
+    return
+end
+
+Data._payload = Data.todo

@@ -1,0 +1,364 @@
+@inherits RazorLight.TemplatePage<dynamic>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List - Jyro Web Server Demo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #1e293b;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #0f172a;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #0284c7;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        .add-todo {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .add-todo h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #0284c7;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #0284c7;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0369a1;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .todos {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .todos h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+        }
+
+        .todo-item:hover {
+            border-color: #0284c7;
+            transform: translateX(4px);
+        }
+
+        .todo-item.completed {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+
+        .todo-checkbox {
+            width: 24px;
+            height: 24px;
+            margin-right: 16px;
+            cursor: pointer;
+            accent-color: #0284c7;
+        }
+
+        .todo-content {
+            flex: 1;
+        }
+
+        .todo-title {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .todo-item.completed .todo-title {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .todo-meta {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .todo-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-text {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-subtext {
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #dc2626;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with stats -->
+        <div class="header">
+            <h1>📝 Todo List</h1>
+            <p class="subtitle">Powered by Jyro - see the <a href=https://github.com/meschsystems/Mesch.JyroWebServer/blob/main/README.md>README</a> for more details</p>
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">@Model["stats"]["total"]</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">@Model["stats"]["pending"]</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">@Model["stats"]["completed"]</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success/Error Messages -->
+        @if (Model["successMessage"] != null && !string.IsNullOrEmpty(Model["successMessage"].ToString()))
+        {
+            <div class="alert alert-success">
+                ✓ @Model["successMessage"]
+            </div>
+        }
+
+        @if (Model["errorMessage"] != null && !string.IsNullOrEmpty(Model["errorMessage"].ToString()))
+        {
+            <div class="alert alert-error">
+                ✗ @Model["errorMessage"]
+            </div>
+        }
+
+        <!-- Add new todo form -->
+        <div class="add-todo">
+            <h2>Add New Todo</h2>
+            <form action="/dynamic/todo/create" method="POST" class="form-group">
+                <input type="text" name="title" placeholder="What needs to be done?" required autofocus>
+                <button type="submit" class="btn btn-primary">Add Todo</button>
+            </form>
+        </div>
+
+        <!-- Todo list -->
+        <div class="todos">
+            <h2>Your Todos</h2>
+
+            @if (Model["todos"] is System.Collections.IList todoList && todoList.Count > 0)
+            {
+                @foreach (var todo in Model["todos"])
+                {
+                    var isComplete = todo["isComplete"].ToString().ToLower() == "true";
+                    var itemClass = isComplete ? "todo-item completed" : "todo-item";
+
+                    <div class="@itemClass">
+                        <form action="/dynamic/todo/toggle" method="POST" style="display: contents;">
+                            <input type="hidden" name="id" value="@todo["id"]" />
+                            <input type="checkbox"
+                                   class="todo-checkbox"
+                                   @(isComplete ? "checked" : "")
+                                   onchange="this.form.submit()" />
+                        </form>
+
+                        <div class="todo-content">
+                            <div class="todo-title">@todo["title"]</div>
+                            <div class="todo-meta">
+                                Created @todo["createdAt"]
+                                @if (isComplete && todo["completedAt"] != null)
+                                {
+                                    <span> • Completed @todo["completedAt"]</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="todo-actions">
+                            <form action="/dynamic/todo/delete" method="POST" style="display: inline;"
+                                  onsubmit="return confirm('Are you sure you want to delete this todo?');">
+                                <input type="hidden" name="id" value="@todo["id"]" />
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-state">
+                    <div class="empty-state-icon">🎉</div>
+                    <div class="empty-state-text">No todos yet!</div>
+                    <div class="empty-state-subtext">Add your first todo above to get started</div>
+                </div>
+            }
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            Built with Jyro Web Server |
+            <a href="https://github.com/Mesch-Jyro" target="_blank">View on GitHub</a> |
+            API: <a href="/api/v1/todo/list">/api/v1/todo/list</a>
+        </div>
+    </div>
+</body>
+</html>

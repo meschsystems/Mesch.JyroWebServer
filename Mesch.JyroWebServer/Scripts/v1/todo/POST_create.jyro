@@ -1,0 +1,19 @@
+# POST /api/v1/todo/create
+# Creates a new todo item
+# Body: { "title": "Todo title" }
+
+Data.title = Data.request.body.title
+
+if Data.title == null or Data.title == "" then
+    Data._payload = {"error": "Title is required"}
+    Data._statusCode = 400
+    return
+end
+
+Data.newTodo = CreateTodo(Data.title)
+
+Data._payload = {
+    "success": true,
+    "todo": Data.newTodo
+}
+Data._statusCode = 201

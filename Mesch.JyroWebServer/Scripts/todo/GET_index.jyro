@@ -1,0 +1,33 @@
+# GET /dynamic/todo/index
+# Main todo list UI
+
+Data.todos = GetAllTodos()
+
+# Calculate statistics
+Data.totalCount = 0
+Data.completedCount = 0
+Data.pendingCount = 0
+
+foreach todo in Data.todos do
+    Data.totalCount++
+    if todo.isComplete == true then
+        Data.completedCount++
+    else
+        Data.pendingCount++
+    end
+end
+
+# Get success/error messages from query parameters
+Data.successMessage = Data.request.query.success
+Data.errorMessage = Data.request.query.error
+
+Data._payload = {
+    "todos": Data.todos,
+    "stats": {
+        "total": Data.totalCount,
+        "completed": Data.completedCount,
+        "pending": Data.pendingCount
+    },
+    "successMessage": Data.successMessage,
+    "errorMessage": Data.errorMessage
+}
