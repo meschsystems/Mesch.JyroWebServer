@@ -33,7 +33,7 @@ public static class TodoFunctions
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, Jyro.ExecutionContext executionContext)
+        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
         {
             var todos = _todos.Values.OrderBy(t => t.Id).ToList();
             var result = new JyroArray();
@@ -59,7 +59,7 @@ public static class TodoFunctions
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, Jyro.ExecutionContext executionContext)
+        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
         {
             if (arguments[0] is not JyroNumber idNumber)
             {
@@ -85,7 +85,7 @@ public static class TodoFunctions
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, Jyro.ExecutionContext executionContext)
+        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
         {
             if (arguments[0] is not JyroString titleString)
             {
@@ -117,7 +117,7 @@ public static class TodoFunctions
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, Jyro.ExecutionContext executionContext)
+        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
         {
             if (arguments[0] is not JyroNumber idNumber)
             {
@@ -148,7 +148,7 @@ public static class TodoFunctions
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, Jyro.ExecutionContext executionContext)
+        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
         {
             if (arguments[0] is not JyroNumber idNumber)
             {
@@ -179,7 +179,7 @@ public static class TodoFunctions
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, Jyro.ExecutionContext executionContext)
+        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
         {
             if (arguments[0] is not JyroNumber idNumber)
             {
