@@ -1,4 +1,0 @@
-# GET /api/v1/todo/list
-# Returns all todo items
-
-Data._payload = GetAllTodos()
