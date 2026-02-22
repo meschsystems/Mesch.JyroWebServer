@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Mesch.Jyro;
 using Mesch.JyroWebServer.Services;
+using Microsoft.FSharp.Core;
 using RazorLight;
 
 namespace Mesch.JyroWebServer.Middleware;
@@ -120,7 +121,7 @@ public class RazorTemplateMiddleware
                         inputData,
                         context.RequestAborted);
 
-                    if (!result.IsSuccessful)
+                    if (!result.IsSuccess)
                     {
                         var errorMessages = result.Messages
                             .Where(m => m.Severity == MessageSeverity.Error)
@@ -136,7 +137,7 @@ public class RazorTemplateMiddleware
                     }
 
                     // Check for redirect
-                    if (result.Data is JyroObject dataObject)
+                    if (result.Value.Value is JyroObject dataObject)
                     {
                         var redirectProperty = dataObject.GetProperty("_redirect");
                         if (!redirectProperty.IsNull && redirectProperty is JyroString redirectString)
@@ -162,12 +163,7 @@ public class RazorTemplateMiddleware
                     // No redirect, return JSON
                     context.Response.StatusCode = StatusCodes.Status200OK;
                     context.Response.ContentType = "application/json";
-                    var jsonOptions = new System.Text.Json.JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
-                    };
-                    var outputJson = result.Data.ToJson(jsonOptions);
+                    var outputJson = result.Value.Value.ToJson();
                     await context.Response.WriteAsync(outputJson);
                     return;
                 }
@@ -293,9 +289,9 @@ public class RazorTemplateMiddleware
             var inputData = await BuildInputDataAsync(context);
 
             // Execute the Jyro script using full path
-            var scriptFullPath = Path.Combine(_scriptsPath, $"{scriptPath}.jyro");
+            var scriptFullPath2 = Path.Combine(_scriptsPath, $"{scriptPath}.jyro");
             var result = await jyroService.ExecuteScriptAsync(
-                scriptFullPath,
+                scriptFullPath2,
                 inputData,
                 context.RequestAborted);
 
@@ -398,7 +394,7 @@ public class RazorTemplateMiddleware
 
                     if (!string.IsNullOrWhiteSpace(bodyJson))
                     {
-                        bodyData = JyroValue.FromJson(bodyJson);
+                        bodyData = JyroValue.FromJson(bodyJson, FSharpOption<JsonSerializerOptions>.None);
                     }
                 }
                 // Parse form-urlencoded bodies
@@ -443,20 +439,20 @@ public class RazorTemplateMiddleware
 
     private async Task HandleResultAsync(
         HttpContext context,
-        JyroExecutionResult result,
+        JyroResult<JyroValue> result,
         string templateRelativePath,
         string scriptPath)
     {
-        if (!result.IsSuccessful)
+        if (!result.IsSuccess)
         {
             var errorMessages = result.Messages
                 .Where(m => m.Severity == MessageSeverity.Error)
                 .Select(m => new
                 {
                     code = m.Code.ToString(),
-                    line = m.LineNumber,
-                    column = m.ColumnPosition,
-                    arguments = m.Arguments
+                    line = m.Location != null ? m.Location.Value.Line : 0,
+                    column = m.Location != null ? m.Location.Value.Column : 0,
+                    args = m.Args
                 })
                 .ToList();
 
@@ -475,9 +471,9 @@ public class RazorTemplateMiddleware
 
         // Extract status code and payload
         int statusCode = StatusCodes.Status200OK;
-        JyroValue responseData = result.Data;
+        JyroValue responseData = result.Value.Value;
 
-        if (result.Data is JyroObject dataObject)
+        if (result.Value.Value is JyroObject dataObject)
         {
             // Check for _statusCode property
             var statusCodeProperty = dataObject.GetProperty("_statusCode");
@@ -519,9 +515,8 @@ public class RazorTemplateMiddleware
             await context.Response.WriteAsync(html);
 
             _logger.LogInformation(
-                "Dynamic page rendered successfully: {TemplatePath} in {ExecutionTime}ms",
-                templateRelativePath,
-                result.Metadata.ProcessingTime.TotalMilliseconds);
+                "Dynamic page rendered successfully: {TemplatePath}",
+                templateRelativePath);
         }
         catch (Exception ex)
         {

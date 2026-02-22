@@ -1,27 +1,24 @@
 using Mesch.Jyro;
 using Mesch.JyroWebServer.JyroHostFunctions;
-using Microsoft.Extensions.Options;
+using Microsoft.FSharp.Core;
 
 namespace Mesch.JyroWebServer.Services;
 
 public class JyroScriptService : IJyroScriptService
 {
-    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<JyroScriptService> _logger;
     private readonly JyroExecutionOptions _executionOptions;
     private readonly string _scriptsDirectory;
     private readonly JyroScriptCacheService _cacheService;
 
     public JyroScriptService(
-        ILoggerFactory loggerFactory,
         ILogger<JyroScriptService> logger,
-        IOptions<JyroExecutionOptions> executionOptions,
+        JyroExecutionOptions executionOptions,
         IWebHostEnvironment environment,
         JyroScriptCacheService cacheService)
     {
-        _loggerFactory = loggerFactory;
         _logger = logger;
-        _executionOptions = executionOptions.Value;
+        _executionOptions = executionOptions;
         _cacheService = cacheService;
 
         // Scripts directory is under the API project root
@@ -35,7 +32,7 @@ public class JyroScriptService : IJyroScriptService
         }
     }
 
-    public async Task<JyroExecutionResult> ExecuteScriptAsync(
+    public async Task<JyroResult<JyroValue>> ExecuteScriptAsync(
         string scriptPath,
         JyroValue inputData,
         CancellationToken cancellationToken = default)
@@ -51,7 +48,7 @@ public class JyroScriptService : IJyroScriptService
                 return CreateErrorResult($"Script file not found: {scriptPath}");
             }
 
-            LinkedProgram? compiledProgram;
+            CompiledProgram? compiledProgram;
 
             // Try to get cached compiled program
             if (!_cacheService.TryGetCachedProgram(scriptPath, out compiledProgram))
@@ -66,37 +63,28 @@ public class JyroScriptService : IJyroScriptService
                 }
 
                 // Compile the script once
-                var linkingResult = await Task.Run(() =>
+                var compileResult = await Task.Run(() =>
                 {
-                    return JyroBuilder
-                        .Create(_loggerFactory)
-                        .WithScript(scriptContent)
-                        .WithStandardLibrary()
-                        .WithRestApi()
+                    return new JyroBuilder()
+                        .WithSource(scriptContent)
                         // Todo management functions
-                        .WithFunction(new TodoFunctions.GetAllTodosFunction())
-                        .WithFunction(new TodoFunctions.GetTodoFunction())
-                        .WithFunction(new TodoFunctions.CreateTodoFunction())
-                        .WithFunction(new TodoFunctions.CompleteTodoFunction())
-                        .WithFunction(new TodoFunctions.UncompleteTodoFunction())
-                        .WithFunction(new TodoFunctions.DeleteTodoFunction())
+                        .AddFunction(new TodoFunctions.GetAllTodosFunction())
+                        .AddFunction(new TodoFunctions.GetTodoFunction())
+                        .AddFunction(new TodoFunctions.CreateTodoFunction())
+                        .AddFunction(new TodoFunctions.CompleteTodoFunction())
+                        .AddFunction(new TodoFunctions.UncompleteTodoFunction())
+                        .AddFunction(new TodoFunctions.DeleteTodoFunction())
                         .Compile();
                 }, cancellationToken);
 
                 // Check compilation result
-                if (!linkingResult.IsSuccessful || linkingResult.Program == null)
+                if (!compileResult.IsSuccess)
                 {
                     _logger.LogError("Script compilation failed: {ScriptPath}", scriptPath);
-
-                    // Return a result with compilation errors
-                    return new JyroExecutionResult(
-                        false,
-                        JyroNull.Instance,
-                        linkingResult.Messages,
-                        new ExecutionMetadata(TimeSpan.Zero, 0, 0, 0, 0, DateTimeOffset.UtcNow));
+                    return JyroResult<JyroValue>.Failure<JyroValue>(compileResult.Messages);
                 }
 
-                compiledProgram = linkingResult.Program;
+                compiledProgram = compileResult.Value.Value;
 
                 // Cache the compiled program for future executions
                 _cacheService.CacheProgram(scriptPath, compiledProgram);
@@ -105,19 +93,15 @@ public class JyroScriptService : IJyroScriptService
             // Execute the compiled program with the provided data
             var result = await Task.Run(() =>
             {
-                return JyroBuilder
-                    .Create(_loggerFactory)
-                    .WithCompiledProgram(compiledProgram!)
-                    .WithData(inputData)
-                    .WithOptions(_executionOptions)
-                    .Execute(cancellationToken);
+                var limiter = new JyroResourceLimiter(_executionOptions, cancellationToken);
+                var ctx = new JyroExecutionContext(limiter, cancellationToken);
+                return Compiler.execute(compiledProgram!, inputData, ctx);
             }, cancellationToken);
 
-            if (result.IsSuccessful)
+            if (result.IsSuccess)
             {
                 _logger.LogInformation(
-                    "Script executed successfully in {ExecutionTime}ms: {ScriptPath}",
-                    result.Metadata.ProcessingTime.TotalMilliseconds,
+                    "Script executed successfully: {ScriptPath}",
                     scriptPath);
             }
             else
@@ -129,11 +113,13 @@ public class JyroScriptService : IJyroScriptService
 
                 foreach (var message in result.Messages.Where(m => m.Severity == MessageSeverity.Error))
                 {
+                    var line = message.Location != null ? message.Location.Value.Line : 0;
+                    var col = message.Location != null ? message.Location.Value.Column : 0;
                     _logger.LogError(
                         "Jyro Error [{Code}] at {Line}:{Column}",
                         message.Code,
-                        message.LineNumber,
-                        message.ColumnPosition);
+                        line,
+                        col);
                 }
             }
 
@@ -151,7 +137,7 @@ public class JyroScriptService : IJyroScriptService
         }
     }
 
-    public async Task<JyroExecutionResult> ExecuteScriptByNameAsync(
+    public async Task<JyroResult<JyroValue>> ExecuteScriptByNameAsync(
         string scriptName,
         JyroValue inputData,
         CancellationToken cancellationToken = default)
@@ -196,21 +182,11 @@ public class JyroScriptService : IJyroScriptService
         return scriptPath;
     }
 
-    private static JyroExecutionResult CreateErrorResult(string errorMessage)
+    private static JyroResult<JyroValue> CreateErrorResult(string errorMessage)
     {
-        // Create a basic error result with proper Message constructor
-        return new JyroExecutionResult(
-            false,
-            JyroNull.Instance,
-            [
-                new Message(
-                    MessageCode.RuntimeError,
-                    0,
-                    0,
-                    MessageSeverity.Error,
-                    ProcessingStage.Execution,
-                    errorMessage)
-            ],
-            new ExecutionMetadata(TimeSpan.Zero, 0, 0, 0, 0, DateTimeOffset.UtcNow));
+        return JyroResult<JyroValue>.Failure<JyroValue>(
+            DiagnosticMessage.Error(
+                MessageCode.RuntimeError, errorMessage,
+                FSharpOption<object[]>.None, FSharpOption<SourceLocation>.None));
     }
 }

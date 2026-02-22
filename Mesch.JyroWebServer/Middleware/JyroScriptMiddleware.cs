@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Mesch.Jyro;
 using Mesch.JyroWebServer.Services;
+using Microsoft.FSharp.Core;
 
 namespace Mesch.JyroWebServer.Middleware;
 
@@ -212,7 +213,7 @@ public class JyroScriptMiddleware
 
                     if (!string.IsNullOrWhiteSpace(bodyJson))
                     {
-                        bodyData = JyroValue.FromJson(bodyJson);
+                        bodyData = JyroValue.FromJson(bodyJson, FSharpOption<JsonSerializerOptions>.None);
                     }
                 }
                 // Parse form-urlencoded bodies
@@ -257,19 +258,19 @@ public class JyroScriptMiddleware
 
     private async Task HandleResultAsync(
         HttpContext context,
-        JyroExecutionResult result,
+        JyroResult<JyroValue> result,
         string scriptName)
     {
-        if (!result.IsSuccessful)
+        if (!result.IsSuccess)
         {
             var errorMessages = result.Messages
                 .Where(m => m.Severity == MessageSeverity.Error)
                 .Select(m => new
                 {
                     code = m.Code.ToString(),
-                    line = m.LineNumber,
-                    column = m.ColumnPosition,
-                    arguments = m.Arguments
+                    line = m.Location != null ? m.Location.Value.Line : 0,
+                    column = m.Location != null ? m.Location.Value.Column : 0,
+                    args = m.Args
                 })
                 .ToList();
 
@@ -287,12 +288,11 @@ public class JyroScriptMiddleware
         }
 
         // Success - check for special control properties
-        // Note: Jyro identifiers must start with a letter (A-Z, a-z), so we use _payload not _payload
         int statusCode = StatusCodes.Status200OK;
-        JyroValue responseData = result.Data;
+        JyroValue responseData = result.Value.Value;
 
         // If the result is an object, check for special control properties
-        if (result.Data is JyroObject dataObject)
+        if (result.Value.Value is JyroObject dataObject)
         {
             // Check for _redirect property to redirect to another page
             var redirectProperty = dataObject.GetProperty("_redirect");
@@ -358,19 +358,12 @@ public class JyroScriptMiddleware
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
 
-        var jsonOptions = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
-        var outputJson = responseData.ToJson(jsonOptions);
+        var outputJson = responseData.ToJson();
         await context.Response.WriteAsync(outputJson);
 
         _logger.LogInformation(
-            "Jyro script executed successfully: {ScriptName} in {ExecutionTime}ms",
-            scriptName,
-            result.Metadata.ProcessingTime.TotalMilliseconds);
+            "Jyro script executed successfully: {ScriptName}",
+            scriptName);
     }
 
     private async Task WriteErrorResponseAsync(

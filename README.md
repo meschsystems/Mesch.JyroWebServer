@@ -8,8 +8,8 @@ This is not intended for production use, but does show how Jyro can be integrate
 
 This project showcases:
 - **Zero controllers** - all endpoints handled by Jyro scripts
-- **RESTful API** endpoints at `/api/v1/*`
-- **Dynamic HTML pages** at `/dynamic/*`
+- **Dynamic HTML pages** at `/dynamic/*` with Razor templates
+- **JSON API** - the same scripts are also accessible at `/api/*` returning JSON
 - **Hot-reload** - edit scripts/templates without restarting
 - **Host functions** - Custom C# functions (`TodoFunctions`) callable from Jyro scripts
 - **Separation of concerns** - Scripts handle logic, Razor handles presentation
@@ -24,25 +24,10 @@ This project showcases:
 2. **Access the UI:**
    - Todo List UI: `https://localhost:5001/dynamic/todo/index`
 
-3. **Try the REST API:**
+3. **Try the JSON API:**
    ```bash
-   # Get all todos
-   curl https://localhost:5001/api/v1/todo/list
-
-   # Create a todo
-   curl -X POST https://localhost:5001/api/v1/todo/create \
-     -H "Content-Type: application/json" \
-     -d '{"title":"Learn Jyro"}'
-
-   # Mark as complete
-   curl -X POST https://localhost:5001/api/v1/todo/complete \
-     -H "Content-Type: application/json" \
-     -d '{"id":1}'
-
-   # Delete a todo
-   curl -X DELETE https://localhost:5001/api/v1/todo/item \
-     -H "Content-Type: application/json" \
-     -d '{"id":1}'
+   # Get all todos (returns JSON from the same script that powers the UI)
+   curl https://localhost:5001/api/todo/index
    ```
 
 ## Project Structure
@@ -52,24 +37,24 @@ Mesch.JyroWebServer/
 ├── JyroHostFunctions/
 │   └── TodoFunctions.cs          # C# host functions for todo CRUD
 │
+├── Middleware/
+│   ├── JyroScriptMiddleware.cs   # Handles /api/* → JSON responses
+│   └── RazorTemplateMiddleware.cs # Handles /dynamic/* → HTML pages
+│
 ├── Scripts/
-│   ├── v1/todo/                   # REST API scripts (/api/v1/todo/*)
-│   │   ├── GET_list.jyro          # List all todos
-│   │   ├── GET_item.jyro          # Get single todo
-│   │   ├── POST_create.jyro       # Create todo
-│   │   ├── POST_complete.jyro     # Mark complete
-│   │   ├── POST_uncomplete.jyro   # Mark incomplete
-│   │   └── DELETE_item.jyro       # Delete todo
-│   │
-│   └── todo/                      # Dynamic page scripts (/dynamic/todo/*)
-│       ├── GET_index.jyro         # Main UI page data
-│       ├── POST_create.jyro       # Handle form submission
-│       ├── POST_toggle.jyro       # Toggle completion
-│       └── POST_delete.jyro       # Delete via form
+│   └── todo/                      # Jyro scripts (/dynamic/todo/* and /api/todo/*)
+│       ├── GET_index.jyro         # Main todo list data
+│       ├── POST_create.jyro       # Create todo (form submission)
+│       ├── POST_toggle.jyro       # Toggle completion (form submission)
+│       └── POST_delete.jyro       # Delete todo (form submission)
+│
+├── Services/
+│   ├── JyroScriptService.cs      # Script compilation and execution
+│   └── JyroScriptCacheService.cs # Hot-reload via FileSystemWatcher
 │
 └── Templates/
     └── todo/
-        └── index.cshtml            # Main UI template
+        └── index.cshtml           # Main UI template (Razor)
 ```
 
 ## How It Works
@@ -94,39 +79,7 @@ The middleware looks for specific custom keys in the Jyro Data context:
 
 Middleware could be extended to detect any number of custom keys for custom functionality.
 
-**Example - GET /api/v1/todo/list** (`Scripts/v1/todo/GET_list.jyro`):
-```jyro
-# Get all todos and return as JSON
-Data._payload = GetAllTodos()
-```
-
-**Example - POST /api/v1/todo/create** (`Scripts/v1/todo/POST_create.jyro`):
-```jyro
-# Extract title from request body
-Data.title = Data.request.body.title
-
-# Validate
-if Data.title == null or Data.title == "" then
-    Data._payload = {"error": "Title is required"}
-    Data._statusCode = 400
-    return
-end
-
-# Create todo via host function
-Data.newTodo = CreateTodo(Data.title)
-
-# Return success response
-Data._payload = {
-    "success": true,
-    "todo": Data.newTodo
-}
-Data._statusCode = 201
-```
-
-### 3. Dynamic Pages
-Scripts in `Scripts/todo/` prepare data and redirect:
-
-**Example - UI Data** (`Scripts/todo/GET_index.jyro`):
+**Example - GET /dynamic/todo/index** (`Scripts/todo/GET_index.jyro`):
 ```jyro
 # Get all todos
 Data.todos = GetAllTodos()
@@ -134,30 +87,42 @@ Data.todos = GetAllTodos()
 # Calculate statistics
 Data.totalCount = 0
 Data.completedCount = 0
+Data.pendingCount = 0
 
 foreach todo in Data.todos do
     Data.totalCount++
     if todo.isComplete == true then
         Data.completedCount++
+    else
+        Data.pendingCount++
     end
 end
 
-# Prepare data for template
 Data._payload = {
     "todos": Data.todos,
     "stats": {
         "total": Data.totalCount,
-        "completed": Data.completedCount
+        "completed": Data.completedCount,
+        "pending": Data.pendingCount
     }
 }
 ```
+
+### 3. Dynamic Pages
+Scripts in `Scripts/todo/` prepare data and redirect:
 
 **Example - Form Handler** (`Scripts/todo/POST_create.jyro`):
 ```jyro
 # Handle form submission
 Data.title = Data.request.body.title
 
-# Create todo
+if Data.title == null or Data.title == "" then
+    Data._redirect = "/dynamic/todo/index?error=Title is required"
+    Data._statusCode = 302
+    return
+end
+
+# Create todo via host function
 Data.newTodo = CreateTodo(Data.title)
 
 # Redirect back to list
@@ -182,13 +147,12 @@ Templates in `Templates/` render HTML using data from scripts:
 
 ## Features
 
-### RESTful API
-- `GET /api/v1/todo/list` - List all todos
-- `GET /api/v1/todo/item?id=123` - Get single todo
-- `POST /api/v1/todo/create` - Create new todo
-- `POST /api/v1/todo/complete` - Mark as complete
-- `POST /api/v1/todo/uncomplete` - Mark as incomplete
-- `DELETE /api/v1/todo/item` - Delete todo
+### Endpoints
+- `GET /dynamic/todo/index` - Todo list UI (HTML)
+- `GET /api/todo/index` - Todo list data (JSON)
+- `POST /dynamic/todo/create` - Create todo (form submission, redirects)
+- `POST /dynamic/todo/toggle` - Toggle completion (form submission, redirects)
+- `POST /dynamic/todo/delete` - Delete todo (form submission, redirects)
 
 ### Dynamic UI
 - Real-time statistics (total, pending, completed)
@@ -251,4 +215,4 @@ If this architecture works for your project, you might consider the next steps:
 
 ## License
 
-Jyro and associated tooling (including this project) is copyright © Mesch Systems and is released under the MIT License.
+Jyro and associated tooling (including this project) is copyright © 2025-2026 Mesch Systems and is released under the MIT License.

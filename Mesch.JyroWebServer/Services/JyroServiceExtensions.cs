@@ -9,20 +9,18 @@ public static class JyroServiceExtensions
     /// </summary>
     public static IServiceCollection AddJyroScriptServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // Configure Jyro execution options from appsettings
-        services.Configure<JyroExecutionOptions>(options =>
+        // Register JyroExecutionOptions as a singleton constructed from configuration.
+        // JyroExecutionOptions is an immutable F# record and cannot be used with services.Configure<T>().
+        services.AddSingleton(sp =>
         {
             var jyroConfig = configuration.GetSection("Jyro");
 
-            // Load configuration values with defaults
-            options.MaxExecutionTime = TimeSpan.FromSeconds(
-                jyroConfig.GetValue<int>("MaxExecutionTimeSeconds", 10));
-
-            options.MaxStatements = jyroConfig.GetValue<int>("MaxStatements", 50_000);
-            options.MaxLoops = jyroConfig.GetValue<int>("MaxLoops", 5_000);
-            options.MaxStackDepth = jyroConfig.GetValue<int>("MaxStackDepth", 512);
-            options.MaxCallDepth = jyroConfig.GetValue<int>("MaxCallDepth", 128);
-            options.MaxScriptCallDepth = jyroConfig.GetValue<int>("MaxScriptCallDepth", 10);
+            return new JyroExecutionOptions(
+                maxExecutionTime: TimeSpan.FromSeconds(
+                    jyroConfig.GetValue<int>("MaxExecutionTimeSeconds", 10)),
+                maxStatements: jyroConfig.GetValue<int>("MaxStatements", 50_000),
+                maxLoopIterations: jyroConfig.GetValue<int>("MaxLoopIterations", 5_000),
+                maxCallDepth: jyroConfig.GetValue<int>("MaxCallDepth", 128));
         });
 
         // Register Jyro script cache service (singleton for file watcher)

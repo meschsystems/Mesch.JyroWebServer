@@ -1,4 +1,5 @@
 using Mesch.Jyro;
+using Microsoft.FSharp.Collections;
 using System.Collections.Concurrent;
 
 namespace Mesch.JyroWebServer.JyroHostFunctions;
@@ -29,11 +30,15 @@ public static class TodoFunctions
     public sealed class GetAllTodosFunction : JyroFunctionBase
     {
         public GetAllTodosFunction()
-            : base(FunctionSignatures.Variadic("GetAllTodos", ParameterType.Any, ParameterType.Array, 0))
+            : base("GetAllTodos", new JyroFunctionSignature(
+                "GetAllTodos",
+                FSharpList<Parameter>.Empty,
+                ParameterType.ArrayParam,
+                0, 0))
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
+        public override JyroValue ExecuteImpl(IReadOnlyList<JyroValue> args, JyroExecutionContext ctx)
         {
             var todos = _todos.Values.OrderBy(t => t.Id).ToList();
             var result = new JyroArray();
@@ -55,13 +60,14 @@ public static class TodoFunctions
     public sealed class GetTodoFunction : JyroFunctionBase
     {
         public GetTodoFunction()
-            : base(FunctionSignatures.Unary("GetTodo", ParameterType.Number, ParameterType.Object))
+            : base("GetTodo", FunctionSignatures.unary(
+                "GetTodo", ParameterType.NumberParam, ParameterType.ObjectParam))
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
+        public override JyroValue ExecuteImpl(IReadOnlyList<JyroValue> args, JyroExecutionContext ctx)
         {
-            if (arguments[0] is not JyroNumber idNumber)
+            if (args[0] is not JyroNumber idNumber)
             {
                 return JyroNull.Instance;
             }
@@ -81,13 +87,14 @@ public static class TodoFunctions
     public sealed class CreateTodoFunction : JyroFunctionBase
     {
         public CreateTodoFunction()
-            : base(FunctionSignatures.Unary("CreateTodo", ParameterType.String, ParameterType.Object))
+            : base("CreateTodo", FunctionSignatures.unary(
+                "CreateTodo", ParameterType.StringParam, ParameterType.ObjectParam))
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
+        public override JyroValue ExecuteImpl(IReadOnlyList<JyroValue> args, JyroExecutionContext ctx)
         {
-            if (arguments[0] is not JyroString titleString)
+            if (args[0] is not JyroString titleString)
             {
                 throw new ArgumentException("CreateTodo requires a string title argument");
             }
@@ -113,13 +120,14 @@ public static class TodoFunctions
     public sealed class CompleteTodoFunction : JyroFunctionBase
     {
         public CompleteTodoFunction()
-            : base(FunctionSignatures.Unary("CompleteTodo", ParameterType.Number, ParameterType.Object))
+            : base("CompleteTodo", FunctionSignatures.unary(
+                "CompleteTodo", ParameterType.NumberParam, ParameterType.ObjectParam))
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
+        public override JyroValue ExecuteImpl(IReadOnlyList<JyroValue> args, JyroExecutionContext ctx)
         {
-            if (arguments[0] is not JyroNumber idNumber)
+            if (args[0] is not JyroNumber idNumber)
             {
                 return JyroNull.Instance;
             }
@@ -144,13 +152,14 @@ public static class TodoFunctions
     public sealed class UncompleteTodoFunction : JyroFunctionBase
     {
         public UncompleteTodoFunction()
-            : base(FunctionSignatures.Unary("UncompleteTodo", ParameterType.Number, ParameterType.Object))
+            : base("UncompleteTodo", FunctionSignatures.unary(
+                "UncompleteTodo", ParameterType.NumberParam, ParameterType.ObjectParam))
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
+        public override JyroValue ExecuteImpl(IReadOnlyList<JyroValue> args, JyroExecutionContext ctx)
         {
-            if (arguments[0] is not JyroNumber idNumber)
+            if (args[0] is not JyroNumber idNumber)
             {
                 return JyroNull.Instance;
             }
@@ -175,13 +184,14 @@ public static class TodoFunctions
     public sealed class DeleteTodoFunction : JyroFunctionBase
     {
         public DeleteTodoFunction()
-            : base(FunctionSignatures.Unary("DeleteTodo", ParameterType.Number, ParameterType.Boolean))
+            : base("DeleteTodo", FunctionSignatures.unary(
+                "DeleteTodo", ParameterType.NumberParam, ParameterType.BooleanParam))
         {
         }
 
-        public override JyroValue Execute(IReadOnlyList<JyroValue> arguments, JyroExecutionContext executionContext)
+        public override JyroValue ExecuteImpl(IReadOnlyList<JyroValue> args, JyroExecutionContext ctx)
         {
-            if (arguments[0] is not JyroNumber idNumber)
+            if (args[0] is not JyroNumber idNumber)
             {
                 return JyroBoolean.False;
             }

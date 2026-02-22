@@ -5,12 +5,12 @@ namespace Mesch.JyroWebServer.Services;
 
 /// <summary>
 /// A FileSystemWatcher-based caching service for compiled Jyro programs.
-/// Caches compiled LinkedProgram objects and automatically invalidates them when source files change,
+/// Caches compiled CompiledProgram objects and automatically invalidates them when source files change,
 /// providing efficient hot-reload functionality by avoiding repeated compilation overhead.
 /// </summary>
 public class JyroScriptCacheService : IDisposable
 {
-    private readonly ConcurrentDictionary<string, LinkedProgram> _cache = new();
+    private readonly ConcurrentDictionary<string, CompiledProgram> _cache = new();
     private readonly FileSystemWatcher _watcher;
     private readonly ILogger<JyroScriptCacheService> _logger;
     private readonly string _scriptsPath;
@@ -72,7 +72,7 @@ public class JyroScriptCacheService : IDisposable
     /// <param name="scriptPath">The absolute path to the script file.</param>
     /// <param name="compiledProgram">The cached compiled program if found.</param>
     /// <returns>True if the compiled program was found in cache, false otherwise.</returns>
-    public bool TryGetCachedProgram(string scriptPath, out LinkedProgram? compiledProgram)
+    public bool TryGetCachedProgram(string scriptPath, out CompiledProgram? compiledProgram)
     {
         if (_cache.TryGetValue(scriptPath, out var program))
         {
@@ -92,7 +92,7 @@ public class JyroScriptCacheService : IDisposable
     /// </summary>
     /// <param name="scriptPath">The absolute path to the script file.</param>
     /// <param name="compiledProgram">The compiled program to cache.</param>
-    public void CacheProgram(string scriptPath, LinkedProgram compiledProgram)
+    public void CacheProgram(string scriptPath, CompiledProgram compiledProgram)
     {
         _cache[scriptPath] = compiledProgram;
         var relativePath = Path.GetRelativePath(_scriptsPath, scriptPath);

@@ -11,7 +11,7 @@ public interface IJyroScriptService
     /// <param name="inputData">Input data object to be made available as 'Data' in the script</param>
     /// <param name="cancellationToken">Optional cancellation token</param>
     /// <returns>Execution result containing output data, success status, and any error messages</returns>
-    Task<JyroExecutionResult> ExecuteScriptAsync(
+    Task<JyroResult<JyroValue>> ExecuteScriptAsync(
         string scriptPath,
         JyroValue inputData,
         CancellationToken cancellationToken = default);
@@ -23,7 +23,7 @@ public interface IJyroScriptService
     /// <param name="inputData">Input data object to be made available as 'Data' in the script</param>
     /// <param name="cancellationToken">Optional cancellation token</param>
     /// <returns>Execution result containing output data, success status, and any error messages</returns>
-    Task<JyroExecutionResult> ExecuteScriptByNameAsync(
+    Task<JyroResult<JyroValue>> ExecuteScriptByNameAsync(
         string scriptName,
         JyroValue inputData,
         CancellationToken cancellationToken = default);
